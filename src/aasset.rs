@@ -61,9 +61,9 @@ pub(crate) unsafe fn asset_open(
     };
     let replacement_list = [
         ("assets/gui/dist/hbui/", "hbui/"),
+        ("assets/gui/dist/", "oreui/"),
         ("assets/renderer/", "renderer/"),
         ("assets/resource_packs/vanilla/cameras", "vanilla_cameras/"),
-        //        ("assets/", "override/"),
     ];
     for replacement in replacement_list {
         if let Ok(file) = c_path.strip_prefix(replacement.0) {
