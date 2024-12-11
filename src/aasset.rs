@@ -1,9 +1,11 @@
 use crate::ResourceLocation;
 use libc::{off64_t, off_t};
+#[cfg(feature = "autofixing")]
 use materialbin::{CompiledMaterialDefinition, MinecraftVersion};
+#[cfg(feature = "autofixing")]
 use ndk::asset::Asset;
 use ndk_sys::{AAsset, AAssetManager};
-use once_cell::sync::Lazy;
+#[cfg(feature = "autofixing")]
 use scroll::Pread;
 use std::{
     collections::HashMap,
@@ -11,7 +13,7 @@ use std::{
     io::{self, Cursor, Read, Seek},
     os::unix::ffi::OsStrExt,
     path::Path,
-    sync::{Mutex, OnceLock},
+    sync::{LazyLock, Mutex, OnceLock},
 };
 
 // This makes me feel wrong... but all we will do is compare the pointer
@@ -19,11 +21,13 @@ use std::{
 #[derive(PartialEq, Eq, Hash)]
 struct AAssetPtr(*const ndk_sys::AAsset);
 unsafe impl Send for AAssetPtr {}
+#[cfg(feature = "autofixing")]
 static MC_VERSION: OnceLock<Option<MinecraftVersion>> = OnceLock::new();
-static WANTED_ASSETS: Lazy<Mutex<HashMap<AAssetPtr, Cursor<Vec<u8>>>>> =
-    Lazy::new(|| Mutex::new(HashMap::new()));
+static WANTED_ASSETS: LazyLock<Mutex<HashMap<AAssetPtr, Cursor<Vec<u8>>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 // Im very sorry but its just that AssetManager is so shitty to work with
 // i cant handle how randomly it breaks
+#[cfg(feature = "autofixing")]
 fn get_current_mcver(man: ndk::asset::AssetManager) -> Option<MinecraftVersion> {
     let mut file = match get_uitext(man) {
         Some(asset) => asset,
@@ -45,6 +49,7 @@ fn get_current_mcver(man: ndk::asset::AssetManager) -> Option<MinecraftVersion> 
     }
     None
 }
+#[cfg(feature = "autofixing")]
 fn get_uitext(man: ndk::asset::AssetManager) -> Option<Asset> {
     // const just so its all at compile time only
     const NEW: &CStr = c"assets/renderer/materials/UIText.material.bin";
@@ -105,10 +110,12 @@ pub(crate) unsafe fn asset_open(
                 log::info!("File was not found");
                 return aasset;
             }
+            #[cfg(feature = "autofixing")]
             let Some(os_filename) = c_path.file_name() else {
                 log::warn!("Path had no filename: {c_path:?}");
                 return aasset;
             };
+            #[cfg(feature = "autofixing")]
             let buffer = if os_filename.as_encoded_bytes().ends_with(b".material.bin") {
                 match process_material(man, cxx_out.as_bytes()) {
                     Some(updated) => updated,
@@ -117,6 +124,8 @@ pub(crate) unsafe fn asset_open(
             } else {
                 cxx_out.as_bytes().to_vec()
             };
+            #[cfg(not(feature = "autofixing"))]
+            let buffer = cxx_out.as_bytes().to_vec();
             let mut wanted_lock = WANTED_ASSETS.lock().unwrap();
             wanted_lock.insert(AAssetPtr(aasset), Cursor::new(buffer));
             // we do not clwan cxx string because cxx ceate does that for us
@@ -125,6 +134,7 @@ pub(crate) unsafe fn asset_open(
     }
     return aasset;
 }
+#[cfg(feature = "autofixing")]
 fn process_material(man: *mut AAssetManager, data: &[u8]) -> Option<Vec<u8>> {
     let mcver = MC_VERSION.get_or_init(|| {
         let pointer = std::ptr::NonNull::new(man).unwrap();

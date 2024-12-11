@@ -47,6 +47,7 @@ extern "C" {
     fn resource_location_free(loc: *mut ResourceLocation);
 }
 // Setup for the log crate
+#[cfg(feature = "logging")]
 pub fn setup_logging() {
     android_logger::init_once(
         android_logger::Config::default().with_max_level(log::LevelFilter::Trace),
@@ -54,6 +55,7 @@ pub fn setup_logging() {
 }
 #[ctor::ctor]
 fn main() {
+    #[cfg(feature = "logging")]
     setup_logging();
     log::info!("Starting");
     let range = dumb_callback().unwrap();
@@ -74,6 +76,7 @@ fn main() {
     // be setup in the background
     std::thread::spawn(hook_aaset);
 }
+#[cfg(not(feature = "nightly"))]
 fn find_signatures(signatures: &[&str], range: (usize, usize)) -> Option<*const u8> {
     for sig in signatures {
         let scanner = Scanner::new(sig);
@@ -90,7 +93,26 @@ fn find_signatures(signatures: &[&str], range: (usize, usize)) -> Option<*const 
     }
     None
 }
-// Setup asset hooks
+#[cfg(feature = "nightly")]
+fn find_signatures(signatures: &[&str], range: (usize, usize)) -> Option<*const u8> {
+    for sig in signatures {
+        let pattern = patterns::Pattern::new(sig);
+        let mem_slice = unsafe { std::slice::from_raw_parts(range.0 as *const u8, range.1) };
+        let mut scanner = patterns::Scanner::new(&pattern, mem_slice);
+        let addr = match scanner.nth(0) {
+            Some(ptr) => unsafe { (ptr as *const u8).add(range.0) },
+            None => {
+                log::error!("Cannot find signature");
+                continue;
+            }
+        };
+        #[cfg(target_arch = "arm")]
+        // Needed for reasons
+        let addr = unsafe { addr.offset(1) };
+        return Some(addr);
+    }
+    None
+} // Setup asset hooks
 pub fn hook_aaset() {
     const LIBNAME: &str = "libminecraftpe.so";
     let lib_entry = match find_lib(LIBNAME) {
