@@ -10,6 +10,7 @@ jobs:
         target: 
           - aarch64-linux-android
           - armv7-linux-androideabi
+          - x86
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
