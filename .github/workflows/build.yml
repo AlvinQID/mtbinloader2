@@ -9,7 +9,10 @@ jobs:
       matrix:
         target: 
           - aarch64-linux-android
-          - arm-linux-androideabi-gcc
+          - x86_64-linux-android
+          - thumbv7neon-linux-androideabi
+          - i686-linux-android
+          - arm-linux-androideabi
           - armv7-linux-androideabi
     runs-on: ubuntu-latest
     steps:
