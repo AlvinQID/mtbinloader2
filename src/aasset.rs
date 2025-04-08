@@ -77,9 +77,10 @@ pub(crate) unsafe fn asset_open(
         Err(_) => c_path,
     };
     let replacement_list = [
-        ("gui/dist/hbui/", "hbui/"),
-        ("renderer/", "renderer/"),
-        ("resource_packs/vanilla/cameras", "vanilla_cameras/"),
+        ("assets/gui/dist/hbui/", "hbui/"),
+        ("assets/renderer/", "renderer/"),
+        ("assets/resource_packs/vanilla/cameras", "vanilla_cameras/"),
+        ("assets/", "assets/"),
     ];
     for replacement in replacement_list {
         if let Ok(file) = stripped_path.strip_prefix(replacement.0) {
